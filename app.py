@@ -5,6 +5,7 @@ import pythoncom
 import threading
 from groq import Groq
 from dotenv import load_dotenv
+import speech_recognition as sr  # Added import for speech recognition
 
 # Load environment variables
 load_dotenv()
@@ -42,6 +43,21 @@ def speak_async(text):
 def stop_speaking():
     stop_speaking_flag.set()
     engine.stop()
+
+# Speech recognition function
+def recognize_speech():
+    r = sr.Recognizer()
+    with sr.Microphone() as source:
+        st.info("🎙️ Listening... Speak now.")
+        audio = r.listen(source, timeout=5, phrase_time_limit=10)
+        try:
+            text = r.recognize_google(audio)
+            return text
+        except sr.UnknownValueError:
+            st.warning("Sorry, I couldn't understand that.")
+        except sr.RequestError:
+            st.error("Speech recognition service is unavailable.")
+    return ""
 
 # Session state init
 if "messages" not in st.session_state:
@@ -131,7 +147,11 @@ if st.session_state.reading_text:
 # Input area
 col3, col4, col5, col6 = st.columns([3, 1, 1, 1])  # Unpacking into four variables
 with col3:
-    if not st.session_state.voice_enabled:
+    if st.session_state.voice_enabled:
+        voice_input = recognize_speech()
+        if voice_input:
+            st.session_state.prompt = voice_input
+    else:
         st.session_state.prompt = st.text_input("Ask me about money, saving, investing...", value=st.session_state.prompt)
 
 with col4:
@@ -168,3 +188,4 @@ with col6:
         stop_speaking()
         st.session_state.reading_text = ""
         st.rerun()
+
